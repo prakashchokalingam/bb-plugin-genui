@@ -243,6 +243,20 @@ describe("compile errors", () => {
     );
   });
 
+  it("explains declarations written inside brackets", () => {
+    const result = compile(
+      `Card("Title", [\n  Divider(),\n  $dzialka = ""\n  $parking = ""\n  Form([Radio($dzialka, ["A", "B"]), Radio($parking, ["A", "B"])])\n])`,
+    );
+    expect(formatDiagnostics(result.diagnostics)).toBe(
+      "3:3 error: `$dzialka = …` is a state declaration inside `[` from 1:15; declarations must be top-level lines: " +
+        "move it out of the brackets to its own line above the component that uses it",
+    );
+    expect(errors(`Text($x = 1)`)[0]).toContain("`$x = …` is a state declaration inside `(`");
+    expect(errors(`Card("t", [x = 1, Text(x)])`)[0]).toContain("`x = …` is a named value inside `[`");
+    expect(errors(`Badge("a", tone = "good")`)[0]).toContain("for a named argument write `tone: …`");
+    expect(errors(`Text({a: $x = 1})`)[0]).toContain("`$x = …` is a state declaration inside `{`");
+  });
+
   it("rejects non-action buttons, misplaced arrows and unknown methods", () => {
     expect(errors(`Button("x", Card(null, []))`)[0]).toContain("takes actions");
     expect(errors(`Text(x => 1)`)[0]).toContain("arrow functions can only be declared");

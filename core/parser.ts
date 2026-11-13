@@ -89,6 +89,19 @@ class Parser {
   private close(closer: string, open: Token, alternatives = ""): void {
     if (this.eat(closer)) return;
     const opener = open.t === "punct" ? open.value : "(";
+    // `[Divider(), $x = ""]`: a declaration written inside brackets. Only a
+    // top-level line may declare, so say that instead of "found `=`".
+    const target = this.tokens[this.i - 1];
+    if (this.isPunct("=") && (target?.t === "state" || target?.t === "ident")) {
+      const isState = target.t === "state";
+      const code = isState ? `$${target.value} = …` : `${target.value} = …`;
+      const hint = !isState && opener === "(" ? `; for a named argument write \`${target.value}: …\`` : "";
+      throw new ParseError(
+        target,
+        `\`${code}\` is a ${isState ? "state declaration" : "named value"} inside \`${opener}\` from ${open.line}:${open.column}; ` +
+          `declarations must be top-level lines: move it out of the brackets to its own line above the component that uses it${hint}`,
+      );
+    }
     throw new ParseError(
       this.peek(),
       `expected ${alternatives}\`${closer}\` to close \`${opener}\` from ${open.line}:${open.column}, found ${describe(this.peek())}`,
